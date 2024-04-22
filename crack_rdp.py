@@ -48,7 +48,7 @@ class ScaningIP:
                     if attack_result == True:
                         print("tấn công thành công")
                         with open(self.path, mode="a", encoding="utf-8") as file:
-                             file.write(ip)
+                             file.write(ip+"\n")
                     else:
                         print("tấn công không thành công")
 
