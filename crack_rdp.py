@@ -6,6 +6,7 @@ import os
 import platform
 
 system_name = platform.system()
+log = []
 
 class ScaningIP:
     def random_ip(self):
@@ -32,6 +33,8 @@ class ScaningIP:
 
     def scan(self, user="Aaron", passw="12345"):
         ip = self.random_ip()
+        if ip in log:
+            return
         check_rdp = None
         try:
             check_rdp = self.check_rdps(hostname=ip)
@@ -44,6 +47,7 @@ class ScaningIP:
             if result == 1:
                 print("Một máy chủ đã gục ngã vào giỏ :>")
                 with open("server.txt", "a", encoding="utf-8") as file:
+                    log.append(ip)
                     file.write(f"Địa chỉ : {ip}  Trạng thái RDP : {check_rdp} MK: 123456 USER: Aaron\n")
     
     def scan_rdp_ip(self, th=10000, user="Aaron", passw="12345"):
