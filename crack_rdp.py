@@ -1,4 +1,3 @@
-from pywinauto.application import Application
 import threading
 import random
 import socket
@@ -69,6 +68,7 @@ class ScaningIP:
 
     # lọc ra các ip rdp không có mật khẩu
     def filter_non_verify_ip(self):
+        from pywinauto.application import Application
         with open(self.path, mode="r", encoding="utf-8") as file:
             IPs = file.read().splitlines()
         
@@ -92,13 +92,7 @@ class ScaningIP:
                 app.kill()
                 app = Application(backend="uia").start(rdp_path)
                 continue
-        
-    def filtered(self):
-        while True:
-            try:
-                self.filter_non_verify_ip()
-            except:
-                continue
+
 
 def command_line():
     def attack():
@@ -111,7 +105,7 @@ def command_line():
             pass
         ScaningIP(thread_num=thread_num, user="Aaron", password="12345").scan_ip()
     def filter():
-        ScaningIP().filtered()
+        ScaningIP().filter_non_verify_ip()
     
     inp = input("1 - attack (only linux)\n2 - lọc ip (only window) * chắc rằng tệp có IPs\nhãy chọn lựa trọn trên : ").strip()
     if inp in "1":
