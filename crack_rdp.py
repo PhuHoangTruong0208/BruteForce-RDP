@@ -48,7 +48,7 @@ class ScaningIP:
                 print("Một máy chủ đã gục ngã vào giỏ :>")
                 with open("server.txt", "a", encoding="utf-8") as file:
                     log.append(ip)
-                    file.write(f"Địa chỉ : {ip}  Trạng thái RDP : {check_rdp} MK: 123456 USER: Aaron\n")
+                    file.write(f"Địa chỉ : {ip}  Trạng thái RDP : {check_rdp} MK: {passw} USER: {user}\n")
     
     def scan_rdp_ip(self, th=10000, user="Aaron", passw="12345"):
         while True:
